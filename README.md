@@ -60,7 +60,7 @@ To start the FastAPI application, run:
 uvicorn main:app --reload
 ```
 
-The API will be available at `http://localhost:8000`.
+The API will be available at `http://localhost:8039`.
 
 ### Using the API
 
@@ -68,7 +68,7 @@ To initiate a scraping task, send a POST request to the `/crawl/` endpoint with 
 
 ```
 curl -X 'POST'
-'http://localhost:8000/crawl/'
+'http://localhost:8039/crawl/'
 -H 'accept: application/json'
 -H 'Content-Type: application/json'
 -d '{"url": "https://example.com"}'
