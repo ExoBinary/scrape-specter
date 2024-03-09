@@ -5,24 +5,27 @@ from scrapy import signals
 from .database import CrawledDomains, CrawledPages, get_db
 from sqlalchemy.orm import Session
 
+# Define a Scrapy spider using Pyppeteer for JavaScript rendering.
 class PyppeteerSpider(scrapy.Spider):
-    name = 'pyppeteer_spider'
-    page_count = 0
-    max_pages = 10  # Set the maximum number of pages to crawl
+    name = 'pyppeteer_spider' # Name of the spider.
+    page_count = 0 # Counter to track the number of pages crawled.
+    max_pages = 10 # Maximum number of pages to crawl.
 
+    # Class method to connect the spider_closed method to the spider_closed signal.
     @classmethod
     def from_crawler(cls, crawler, *args, **kwargs):
         spider = super(PyppeteerSpider, cls).from_crawler(crawler, *args, **kwargs)
         crawler.signals.connect(spider.spider_closed, signal=signals.spider_closed)
         return spider
 
+    # Initialize the spider, setting the domain_id to None.
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.domain_id = None
 
+    # Callback method when the spider is closed. Updates the domain's status in the database.
     def spider_closed(self, spider, reason):
         db = next(get_db())
-        # Update the domain status based on the reason the spider closed
         status = 'COMPLETED' if reason == 'finished' else 'FAILURE'
         if self.domain_id:
             domain = db.query(CrawledDomains).filter(CrawledDomains.id == self.domain_id).first()
@@ -31,6 +34,7 @@ class PyppeteerSpider(scrapy.Spider):
                 db.commit()
         db.close()
 
+    # Method to generate the initial requests for the spider.
     def start_requests(self):
         db = next(get_db())
         for url in self.start_urls:
@@ -38,11 +42,9 @@ class PyppeteerSpider(scrapy.Spider):
 
             domain = db.query(CrawledDomains).filter(CrawledDomains.domain_url == domain_url).first()
             if domain:
-                # If the domain already exists, update its status to 'PENDING'
                 domain.status = 'PENDING'
                 db.commit()
             else:
-                # If the domain doesn't exist, create a new record with status 'PENDING'
                 domain = CrawledDomains(domain_url=domain_url, status='PENDING')
                 db.add(domain)
                 db.commit()
@@ -51,6 +53,7 @@ class PyppeteerSpider(scrapy.Spider):
             yield scrapy.Request(url, meta={'pyppeteer': True, 'domain_id': domain.id})
         db.close()
 
+    # Method to parse the responses from the requests made by the spider.
     def parse(self, response):
         db = next(get_db())
         if self.page_count < self.max_pages:
