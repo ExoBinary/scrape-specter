@@ -5,7 +5,10 @@
 
 version: 2
 updates:
-  - package-ecosystem: "" # See documentation for possible values
-    directory: "/" # Location of package manifests
+  # Enable version updates for pip (Python)
+  - package-ecosystem: "pip"
+    # Directory where `requirements.txt` is located
+    directory: "/"
+    # Check the pip dependencies for updates on a weekly basis
     schedule:
       interval: "weekly"
