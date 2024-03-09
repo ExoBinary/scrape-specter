@@ -4,11 +4,13 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from dotenv import load_dotenv
 import os
 
-# Load environment variables from .env file
+# Initialize dotenv to load environment variables from a .env file.
 load_dotenv()
 
+# Base class for declarative class definitions.
 Base = declarative_base()
 
+# Define the CrawledDomains model, representing the crawled_domains table in the database.
 class CrawledDomains(Base):
     __tablename__ = 'crawled_domains'
     id = Column(Integer, primary_key=True)
@@ -17,6 +19,7 @@ class CrawledDomains(Base):
     createdat = Column(DateTime, default=func.current_timestamp())
     updatedat = Column(DateTime, default=func.current_timestamp(), onupdate=func.current_timestamp())
 
+# Define the CrawledPages model, representing the crawled_pages table in the database.
 class CrawledPages(Base):
     __tablename__ = 'crawled_pages'
     id = Column(Integer, primary_key=True)
@@ -26,18 +29,23 @@ class CrawledPages(Base):
     createdat = Column(DateTime, default=func.current_timestamp())
     updatedat = Column(DateTime, default=func.current_timestamp(), onupdate=func.current_timestamp())
 
-# Get DATABASE_URL from environment variable
+# Retrieve the DATABASE_URL environment variable.
 DATABASE_URL = os.getenv("DATABASE_URL")
 
+# Create the SQLAlchemy engine, which provides a source of database connectivity and behavior.
 engine = create_engine(DATABASE_URL)
+
+# Create a sessionmaker, which is a factory for creating new Session objects.
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Generate a database session.
 def get_db():
     db = SessionLocal()
     try:
         yield db
     finally:
-        db.close()
+        db.close() # Ensure the session is closed properly.
 
+# Create the tables in the database using the metadata information from Base.
 def create_tables():
     Base.metadata.create_all(engine)
