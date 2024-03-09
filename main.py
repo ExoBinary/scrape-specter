@@ -6,60 +6,78 @@ from modules.database import create_tables
 from multiprocessing import Process, Manager, freeze_support
 from urllib.parse import urlparse
 import re
+import uvicorn
 
+# Initialize FastAPI application
 app = FastAPI()
 
-# Declare the manager and lock_dict as global variables to initialize them later
+# Declare global variables for manager and lock dictionary
 manager = None
 lock_dict = None
 
 def run_crawler(domain, lock_dict):
+    """
+    Run the Scrapy crawler in a separate process.
+
+    :param domain: Domain to crawl.
+    :param lock_dict: Dictionary to manage domain locks.
+    """
     try:
+        # Initialize and start Scrapy crawler process
         process = CrawlerProcess(get_project_settings())
         process.crawl(PyppeteerSpider, start_urls=[domain])
         process.start()
-        process.join()  # Wait for the crawling process to finish before releasing the lock.
+        process.join()
     except Exception:
+        # In case of any exception, raise HTTP 500 error
         raise HTTPException(status_code=500, detail="Server Error. Please report this issue.")
     finally:
-        lock_dict[domain] = False  # Ensure the lock is released even if an exception occurs.
+        # Release the domain lock after crawling is finished or an exception occurs
+        lock_dict[domain] = False
 
 @app.post("/crawl/")
 async def crawl(url: str):
+    """
+    API endpoint to initiate web crawling.
+
+    :param url: URL to crawl.
+    :return: Response indicating the crawling initiation status.
+    """
     global lock_dict
 
-    # Validate and format the URL
+    # Ensure URL starts with http or https
     if not url.startswith("http://") and not url.startswith("https://"):
         url = "https://" + url
 
-    # Validate the URL using regex
+    # Validate URL format
     if not re.match(r'(http|https)://[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', url):
         raise HTTPException(status_code=400, detail="Invalid URL format")
 
-    # Extract the domain from the URL
+    # Extract domain from URL
     parsed_url = urlparse(url)
     domain = f"{parsed_url.scheme}://{parsed_url.netloc}"
 
-    # Acquire the lock for the domain
+    # Check and set lock for the domain
     if domain in lock_dict and lock_dict[domain]:
         return {"detail": f"Crawling initiated for domain: {domain}"}
     lock_dict[domain] = True
 
-    # Run the crawler in a separate process using the extracted domain
+    # Initiate crawling in a separate process
     p = Process(target=run_crawler, args=(domain, lock_dict))
     p.start()
 
     return {"detail": f"Crawling initiated for domain: {domain}"}
 
 if __name__ == "__main__":
-    import uvicorn
-    freeze_support()  # Add freeze_support for multiprocessing on Windows
+    # Ensure proper multiprocessing support on Windows
+    freeze_support()
 
-    # Initialize the manager and lock_dict inside the main guard
+    # Initialize the manager and lock dictionary
     manager = Manager()
     lock_dict = manager.dict()
 
-    # Call create_tables to ensure all tables are created
+    # Create database tables if they don't exist
     create_tables()
 
+    # Start the FastAPI application
     uvicorn.run(app, host="0.0.0.0", port=8039)
