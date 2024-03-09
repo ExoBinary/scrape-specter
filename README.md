@@ -1,4 +1,4 @@
-# FastAPI and Scrapy Project
+# Scrape Specter
 
 This project integrates FastAPI with Scrapy to create a web scraping API. Users can initiate scraping tasks via an API endpoint, and the results are stored in a PostgreSQL database.
 
